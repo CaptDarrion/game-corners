@@ -5,48 +5,53 @@
   <meta charset="UTF-8">
   <script src="https://cdn.tailwindcss.com"></script>
   <title>Гра "Кутки"</title>
+  <style>
+    .cell {
+      width: 48px;
+      height: 48px;
+      background-color: white;
+      border: 1px solid #ccc;
+      border-radius: 0.25rem;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+    }
 
-  <!-- Подключаем Tailwind-компоненты через @apply -->
-  <style type="text/tailwindcss">
-    @layer components {
-      .cell {
-        @apply w-[50px] h-[50px] bg-gray-50 border border-gray-400 flex items-center justify-center rounded-md;
-      }
-      .piece {
-        @apply w-[30px] h-[30px] rounded-full;
-      }
-      .player1 {
-        @apply bg-red-500;
-      }
-      .player2 {
-        @apply bg-blue-500;
-      }
-      .selected {
-        @apply ring-4 ring-green-500 ring-offset-1;
-      }
+    .piece {
+      width: 80%;
+      height: 80%;
+      border-radius: 9999px;
+    }
+
+    .player1 {
+      background-color: red;
+    }
+
+    .player2 {
+      background-color: blue;
+    }
+
+    .selected {
+      outline: 3px solid yellow;
     }
   </style>
+
+
 </head>
 
 <body class="min-h-screen bg-gray-100 flex flex-col items-center py-10 font-sans">
   <h1 class="text-3xl font-bold text-gray-800 mb-6">Гра "Кутки"</h1>
 
-  <!-- Игровая доска -->
-  <div id="board" class="grid grid-cols-8 gap-1 bg-gray-300 p-2 rounded-xl shadow-md"></div>
+  <div id="board" class="grid grid-cols-8 grid-rows-8 gap-1 bg-gray-300 p-2 rounded-xl shadow-md">
+  </div>
 
-  <!-- Статус хода -->
-  <p id="status" class="mt-6 text-lg text-gray-700 font-medium">
-    Хід гравця 1 (червоний)
-  </p>
+  <p id="status" class="mt-6 text-lg text-gray-700 font-medium">Хід гравця 1 (червоний)</p>
 
-  <!-- Кнопка завершения хода -->
   <button id="endTurnBtn"
-    class="mt-4 px-6 py-2 bg-blue-600 text-white text-sm font-semibold rounded-lg shadow hover:bg-blue-700 disabled:opacity-50 transition">
-    Завершити хід
-  </button>
+    class="mt-4 px-6 py-2 bg-blue-600 text-white text-sm font-semibold rounded-lg shadow hover:bg-blue-700 disabled:opacity-50 transition">Завершити
+    хід</button>
 
-  <!-- Ваш JavaScript остаётся в corners.js -->
-  <script src="corners.js"></script>
+  <script type="module" src="main.js"></script>
 </body>
 
 </html>
