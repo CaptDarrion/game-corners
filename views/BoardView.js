@@ -2,7 +2,7 @@ export default class BoardView {
   constructor(el) {
     this.el = el;
   }
-  render(grid, selected, jumps = []) {
+  render(grid, selected) {
     this.el.innerHTML = "";
     grid.forEach((row, r) =>
       row.forEach((piece, c) => {
@@ -11,23 +11,21 @@ export default class BoardView {
         cell.dataset.row = r;
         cell.dataset.col = c;
         if (piece) {
-          const pEl = document.createElement("div");
-          pEl.className = `piece player${piece}`;
+          const dot = document.createElement("div");
+          dot.className = `piece player${piece.playerId}`;
+          if (piece.isKing && piece.isKing()) dot.classList.add("king");
           if (selected && selected.r === r && selected.c === c)
-            pEl.classList.add("selected");
-          cell.appendChild(pEl);
+            dot.classList.add("selected");
+          cell.appendChild(dot);
         }
-        if (jumps.some((p) => p.r === r && p.c === c))
-          cell.classList.add("jump-highlight");
         this.el.appendChild(cell);
       })
     );
   }
-  bindCellClick(handler) {
+  bindCellClick(fn) {
     this.el.addEventListener("click", (e) => {
       const cell = e.target.closest(".cell");
-      if (!cell) return;
-      handler(+cell.dataset.row, +cell.dataset.col);
+      if (cell) fn(+cell.dataset.row, +cell.dataset.col);
     });
   }
 }

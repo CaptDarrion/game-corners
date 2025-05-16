@@ -1,114 +1,121 @@
-// src/controllers/GameController.js
 import Board from "../models/Board.js";
 import MoveValidator from "../rules/MoveValidator.js";
+import FileManager from "../utils/FileManager.js";
+import { GenericStack } from "../utils/Collections.js";
 
 export default class GameController {
-  constructor(uiController) {
-    this.board = new Board();
-    this.currentPlayer = 1;
-    this.selected = null;
-    this.hasJumped = false;
-    this.ui = uiController;
-    this.prevJumpFrom = null;
-    this._init();
+  #ui;
+  #board;
+  #selected = null;
+  #currentPlayer = 1;
+  #hasJumped = false;
+  #history;
+  constructor(ui) {
+    this.#ui = ui;
+    this.#board = new Board();
+    this.#history = new GenericStack();
+    this.#init();
   }
-
-  _init() {
-    this.ui.bindCellClick(this.handleCellClick.bind(this));
-    this.ui.bindEndTurn(this.endTurn.bind(this));
-    this.ui.updateStatus(`Хід гравця ${this.currentPlayer}`);
-    this._render();
+  #init() {
+    this.#ui.bindCellClick(this.handleCellClick.bind(this));
+    this.#ui.bindEndTurn(this.endTurn.bind(this));
+    this.#ui.bindSave(() => this.saveGame());
+    this.#ui.bindLoad((file) => this.loadGame(file));
+    this.#ui.updateStatus(`Player ${this.#currentPlayer} move`);
+    this.#render();
   }
-
   handleCellClick(r, c) {
-    const piece = this.board.getPiece(r, c);
-    const pos = { r, c };
-
-    if (!this.selected && piece !== this.currentPlayer) return;
-    if (this.selected && this.selected.r === r && this.selected.c === c) {
-      this.selected = null;
-      return this._render();
+    const pos = { r, c },
+      piece = this.#board.getPiece(r, c);
+    if (!this.#selected && (!piece || piece.playerId !== this.#currentPlayer))
+      return;
+    if (this.#selected && this.#selected.r === r && this.#selected.c === c) {
+      this.#selected = null;
+      return this.#render();
     }
 
-    if (this.selected) {
-      if (
-        this.prevJumpFrom &&
-        pos.r === this.prevJumpFrom.r &&
-        pos.c === this.prevJumpFrom.c
-      ) {
-        return;
-      }
-
-      if (MoveValidator.isValidJump(this.board, this.selected, pos)) {
-        this.prevJumpFrom = { ...this.selected };
-
-        this.board.movePiece(this.selected, pos);
-        this.selected = pos;
-        this.hasJumped = true;
-
-        const further = MoveValidator.getAvailableJumps(
-          this.board,
-          this.selected
+    if (this.#selected) {
+      if (MoveValidator.isValidJump(this.#board, this.#selected, pos)) {
+        this.#history.push(this.#board.toJSON());
+        this.#board.movePiece(this.#selected, pos);
+        this.#selected = pos;
+        this.#hasJumped = true;
+        const canContinue = MoveValidator.hasAnyJump(
+          this.#board,
+          this.#selected
         );
-        if (further.length > 0) {
-          return this._render();
+        if (canContinue) {
+          return this.#render();
         } else {
-          this.prevJumpFrom = null;
-          this.selected = null;
           return this.endTurn();
         }
       }
-
       if (
-        !this.hasJumped &&
-        MoveValidator.isValidMove(this.board, this.selected, pos)
+        !this.#hasJumped &&
+        MoveValidator.isValidMove(this.#board, this.#selected, pos)
       ) {
-        this.prevJumpFrom = null;
-        this.board.movePiece(this.selected, pos);
-        this.selected = null;
+        this.#history.push(this.#board.toJSON());
+        this.#board.movePiece(this.#selected, pos);
+        this.#selected = null;
         return this.endTurn();
       }
-
       return;
     }
+    if (piece.playerId === this.#currentPlayer) this.#selected = pos;
+    this.#render();
+  }
 
-    if (piece === this.currentPlayer) {
-      this.selected = pos;
-      this.prevJumpFrom = null;
+  undo() {
+    if (!this.#history.isEmpty()) {
+      this.#board = Board.fromJSON(this.#history.pop());
+      this.#render();
     }
-
-    this._render();
   }
   endTurn() {
-    this.hasJumped = false;
-    this.prevJumpFrom = null;
-    this.selected = null;
-
-    if (this._checkWin(this.currentPlayer)) {
-      this.ui.updateStatus(`Виграв гравець ${this.currentPlayer}!`);
-      return this.ui.disable();
+    this.#hasJumped = false;
+    this.#selected = null;
+    if (this.#checkWin(this.#currentPlayer)) {
+      this.#ui.updateStatus(`Player ${this.#currentPlayer} wins!`);
+      return this.#ui.disable();
     }
-    this.currentPlayer = 3 - this.currentPlayer;
-    this.ui.updateStatus(`Хід гравця ${this.currentPlayer}`);
-    this._render();
+    this.#currentPlayer = 3 - this.#currentPlayer;
+    this.#ui.updateStatus(`Player ${this.#currentPlayer} move`);
+    this.#render();
   }
-
-  _checkWin(player) {
+  #checkWin(player) {
     const target =
       player === 1
         ? { rows: [5, 6, 7], cols: [4, 5, 6, 7] }
         : { rows: [0, 1, 2], cols: [0, 1, 2, 3] };
-    let cnt = 0;
-    for (const r of target.rows) {
+    let count = 0;
+    for (const r of target.rows)
       for (const c of target.cols) {
-        if (this.board.getPiece(r, c) === player) cnt++;
+        const p = this.#board.getPiece(r, c);
+        if (p && p.playerId === player) count++;
       }
-    }
-    return cnt === 12;
+    return count === 12;
   }
-
-  _render() {
-    const jumps = [];
-    this.ui.updateBoard(this.board.grid, this.selected, jumps);
+  #render() {
+    this.#ui.updateBoard(this.#board.grid, this.#selected);
+  }
+  saveGame() {
+    FileManager.saveAsJSON(
+      this.#board.grid.map((row) =>
+        row.map((p) =>
+          p ? { playerId: p.playerId, isKing: p.isKing() } : null
+        )
+      ),
+      "board.json"
+    );
+    this.#ui.updateStatus("Saved to file");
+  }
+  loadGame(file) {
+    FileManager.loadFromFile(file)
+      .then((data) => {
+        this.#board = Board.fromJSON(JSON.stringify(data));
+        this.#render();
+        this.#ui.updateStatus("Loaded from file");
+      })
+      .catch(() => this.#ui.updateStatus("Load error"));
   }
 }

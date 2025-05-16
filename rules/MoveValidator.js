@@ -8,54 +8,33 @@ export default class MoveValidator {
   static isValidJump(board, from, to) {
     const dr = to.r - from.r;
     const dc = to.c - from.c;
-
-    const absDr = Math.abs(dr);
-    const absDc = Math.abs(dc);
-    const validDir =
-      (absDr === 2 && dc === 0) ||
-      (absDc === 2 && dr === 0) ||
-      (absDr === 2 && absDc === 2);
-    if (!validDir) return false;
-    const midR = from.r + dr / 2;
-    const midC = from.c + dc / 2;
-
-    if (board.getPiece(midR, midC) === null) return false;
-
-    if (board.getPiece(to.r, to.c) !== null) return false;
-    return true;
+    const valid =
+      (Math.abs(dr) === 2 && dc === 0) ||
+      (Math.abs(dc) === 2 && dr === 0) ||
+      (Math.abs(dr) === 2 && Math.abs(dc) === 2);
+    if (!valid) return false;
+    const mid = { r: from.r + dr / 2, c: from.c + dc / 2 };
+    if (!board.getPiece(mid.r, mid.c)) return false;
+    return board.getPiece(to.r, to.c) === null;
   }
-  static getAvailableJumps(board, position, visited = new Set()) {
-    const jumps = [];
-    const key = `${position.r},${position.c}`;
-    if (visited.has(key)) return [];
-    visited.add(key);
-
+  
+  static hasAnyJump(board, from) {
     const dirs = [
-      { dr: -1, dc: 0 },
-      { dr: 1, dc: 0 },
-      { dr: 0, dc: -1 },
-      { dr: 0, dc: 1 },
-      { dr: -1, dc: -1 },
-      { dr: -1, dc: 1 },
-      { dr: 1, dc: -1 },
-      { dr: 1, dc: 1 },
+      { dr: 2, dc: 0 },
+      { dr: -2, dc: 0 },
+      { dr: 0, dc: 2 },
+      { dr: 0, dc: -2 },
+      { dr: 2, dc: 2 },
+      { dr: 2, dc: -2 },
+      { dr: -2, dc: 2 },
+      { dr: -2, dc: -2 },
     ];
-
     for (const { dr, dc } of dirs) {
-      const mid = { r: position.r + dr, c: position.c + dc };
-      const land = { r: position.r + dr * 2, c: position.c + dc * 2 };
-      if (
-        land.r >= 0 &&
-        land.r < board.size &&
-        land.c >= 0 &&
-        land.c < board.size &&
-        board.getPiece(mid.r, mid.c) !== null &&
-        board.getPiece(land.r, land.c) === null
-      ) {
-        jumps.push(land);
-        jumps.push(...this.getAvailableJumps(board, land, new Set(visited)));
-      }
+      const to = { r: from.r + dr, c: from.c + dc };
+      if (to.r < 0 || to.r >= board.size || to.c < 0 || to.c >= board.size)
+        continue;
+      if (this.isValidJump(board, from, to)) return true;
     }
-    return jumps;
+    return false;
   }
 }
